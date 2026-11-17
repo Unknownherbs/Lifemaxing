@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="A daily habit tracker for faith, looks, body, mind and money. Runs in your browser. No account, no tracking.">
+<title>Lifemaxing Daily</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230F1012'/%3E%3Crect x='8' y='8' width='6' height='6' fill='%23F5F5F6'/%3E%3Crect x='18' y='8' width='6' height='6' fill='%23F5F5F6'/%3E%3Crect x='8' y='18' width='6' height='6' fill='%23F5F5F6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400..800&display=swap">
+<style>
+/* Layout: a ruled daily log. Phone: single column, text-only tab bar at the bottom. Desktop (880px+): fixed sidebar with wordmark, nav and level; main area splits into two columns (act / reflect). No cards, no shadows, no rounded pills: hairline rules, square controls, mono numerals. Colour appears only as the five pillar markers. */
+:root {
+  --bg: #E9EAEC;
+  --panel: #F5F5F6;
+  --fg: #0F1012;
+  --muted: #5C5F66;
+  --line: #C5C8CE;
+  --ink: #0F1012;
+  --ink-fg: #F5F5F6;
+  --warn: #B3261E;
+  --p-faith: #6D4AAE;
+  --p-looks: #B8385E;
+  --p-body: #2E7D4F;
+  --p-mind: #2A69AD;
+  --p-money: #1B7D7E;
+  --font-body: "Schibsted Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E0F11; --panel: #17191C; --fg: #ECECEA; --muted: #9A9CA3; --line: #2C2F34;
+    --ink: #ECECEA; --ink-fg: #0E0F11; --warn: #FF8A80;
+    --p-faith: #B79BF0; --p-looks: #F28BA9; --p-body: #6FCB93; --p-mind: #7DB4F2; --p-money: #5CCFCF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E0F11; --panel: #17191C; --fg: #ECECEA; --muted: #9A9CA3; --line: #2C2F34;
+  --ink: #ECECEA; --ink-fg: #0E0F11; --warn: #FF8A80;
+  --p-faith: #B79BF0; --p-looks: #F28BA9; --p-body: #6FCB93; --p-mind: #7DB4F2; --p-money: #5CCFCF;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-block: 20px 96px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+h1, h2, h3, p, ul { margin: 0; }
+h1 { font-size: 34px; line-height: 1.05; font-weight: 800; letter-spacing: -.03em; }
+h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.kick { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.sm { font-size: 13px; }
+
+.shell { max-width: 1160px; margin: 0 auto; display: block; }
+#view { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.cols { display: flex; flex-direction: column; gap: 28px; }
+.ca, .cb { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.sect { display: flex; flex-direction: column; gap: 12px; }
+.sect > h2 { padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+
+/* navigation */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--bg); border-top: 1px solid var(--ink); display: grid; grid-template-columns: repeat(4, 1fr); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+.tabs .brand, .tabs .glance, .tabs .keys { display: none; }
+.tabs button { background: none; border: 0; border-top: 3px solid transparent; margin-top: -1px; padding: 14px 0 16px; min-height: 52px; cursor: pointer; color: var(--muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; }
+.tabs button[aria-current="page"] { color: var(--fg); border-top-color: var(--ink); font-weight: 600; }
+.tabs .links { display: contents; }
+
+/* page head */
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.head > div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.dnav { display: flex; gap: 6px; align-items: center; flex: none; }
+.nb { width: 40px; height: 40px; border: 1px solid var(--ink); background: transparent; cursor: pointer; font-size: 20px; line-height: 1; border-radius: 2px; }
+.nb:hover:not(:disabled) { background: var(--ink); color: var(--ink-fg); }
+.nb:disabled { opacity: .3; cursor: default; }
+.tx { background: none; border: 0; padding: 8px 2px; min-height: 40px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+.verse { font-size: 14px; color: var(--muted); max-width: 60ch; }
+.verse b { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--fg); letter-spacing: .04em; margin-right: 6px; text-transform: uppercase; }
+
+/* tally */
+.tallyrow { display: flex; align-items: center; gap: 14px; }
+.tally { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0; }
+.tally i { width: 12px; height: 12px; border: 1.5px solid var(--pc); border-radius: 1px; display: block; }
+.tally i.d { background: var(--pc); }
+.tally i.t { background: linear-gradient(135deg, var(--pc) 50%, transparent 50%); }
+.tally i.c { box-shadow: 0 3px 0 -1.5px var(--fg); margin-bottom: 3px; }
+.tallyrow .mono { font-size: 13px; flex: none; }
+
+/* banner */
+.note { border: 1px solid var(--ink); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; background: var(--panel); }
+.note b { font-weight: 700; }
+.note.warn { border-color: var(--warn); }
+.note.warn b { color: var(--warn); }
+.note .row { display: flex; gap: 8px; margin-top: 6px; }
+
+/* buttons */
+.btn { border: 1px solid var(--ink); background: transparent; border-radius: 2px; padding: 8px 16px; min-height: 44px; cursor: pointer; font-weight: 650; font-size: 14px; }
+.btn:hover { background: var(--ink); color: var(--ink-fg); }
+.btn.primary { background: var(--ink); color: var(--ink-fg); min-height: 52px; font-size: 16px; }
+.btn.primary:hover { opacity: .88; }
+.btn.danger { color: var(--warn); border-color: var(--warn); }
+.btn.danger:hover { background: var(--warn); color: var(--bg); }
+.btn.wide { width: 100%; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btns .btn { flex: 1 1 auto; }
+
+/* next up */
+.next { border-top: 3px solid var(--ink); border-bottom: 1px solid var(--line); padding: 16px 0 20px; display: flex; flex-direction: column; gap: 14px; }
+.next .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mk { width: 12px; height: 12px; background: var(--pc); display: inline-block; flex: none; border-radius: 1px; }
+.next h2.t { font-size: 32px; line-height: 1.1; font-weight: 800; letter-spacing: -.025em; text-transform: none; padding: 0; border: 0; overflow-wrap: anywhere; }
+.cue { color: var(--muted); }
+.cue b { color: var(--fg); font-weight: 600; }
+.tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; border: 1px solid currentColor; padding: 1px 5px; border-radius: 1px; font-weight: 500; }
+
+/* mode */
+.modebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.seg { display: inline-flex; gap: 18px; }
+.seg button { border: 0; border-bottom: 2px solid transparent; background: none; padding: 8px 0; min-height: 40px; cursor: pointer; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { color: var(--fg); border-bottom-color: var(--ink); }
+
+/* routines */
+.slot { display: flex; flex-direction: column; }
+.slot-h { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.slot-h .c { margin-left: auto; font-family: var(--font-mono); font-size: 13px; }
+.now { font-family: var(--font-mono); font-size: 11px; background: var(--ink); color: var(--ink-fg); padding: 1px 6px; border-radius: 1px; letter-spacing: .06em; }
+.rt { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.rt .main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; text-align: left; background: none; border: 0; padding: 12px 0; min-height: 52px; cursor: pointer; }
+.chk { flex: none; width: 22px; height: 22px; border: 2px solid var(--pc); border-radius: 2px; display: grid; place-items: center; position: relative; background: transparent; padding: 0; }
+.chk svg { width: 14px; height: 14px; stroke: var(--bg); opacity: 0; }
+.main[aria-checked="true"] .chk { background: var(--pc); }
+.main[aria-checked="true"] .chk svg { opacity: 1; }
+.main[data-tiny="1"] .chk { background: linear-gradient(135deg, var(--pc) 50%, transparent 50%); }
+.main[data-tiny="1"] .chk svg { display: none; }
+.rt .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.main[aria-checked="true"] .nm { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.rt .mt { flex: none; display: flex; gap: 8px; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.mt .core { color: var(--fg); border: 1px solid var(--fg); padding: 0 4px; border-radius: 1px; }
+.info { flex: none; width: 40px; height: 40px; border: 0; background: none; color: var(--muted); cursor: pointer; font-family: var(--font-mono); font-size: 18px; }
+.info:hover { color: var(--fg); }
+.det { padding: 2px 0 14px 36px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.pop .chk { animation: pop .3s ease-out; }
+@keyframes pop { 0% { transform: scale(.7); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+/* forms */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.input { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px; min-height: 44px; }
+.input:focus { border-color: var(--ink); outline: 0; box-shadow: 0 0 0 1px var(--ink); }
+.input::placeholder { color: var(--muted); opacity: .8; }
+textarea.input { resize: vertical; min-height: 72px; }
+select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--fg) 50%), linear-gradient(135deg, var(--fg) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.prow { display: flex; align-items: center; gap: 12px; }
+.prow .chk { --pc: var(--ink); cursor: pointer; }
+.prow .chk[aria-checked="true"] { background: var(--ink); }
+.prow .chk[aria-checked="true"] svg { opacity: 1; stroke: var(--ink-fg); }
+.prow .input.done { color: var(--muted); text-decoration: line-through; }
+details.ci > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); min-height: 36px; }
+details.ci > summary::-webkit-details-marker { display: none; }
+details.ci > summary::after { content: "+"; margin-left: auto; font-family: var(--font-mono); font-size: 18px; line-height: 1; }
+details.ci[open] > summary::after { content: "\2212"; }
+details.ci > .stack { padding-top: 14px; }
+.mood { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.mood button { min-height: 44px; border: 1px solid var(--line); background: var(--panel); border-radius: 2px; cursor: pointer; font-family: var(--font-mono); font-weight: 600; font-size: 15px; }
+.mood button[aria-pressed="true"] { background: var(--ink); color: var(--ink-fg); border-color: var(--ink); }
+.moodkey { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* journey */
+.lv { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.lv .num { font-family: var(--font-mono); font-size: 56px; line-height: 1; font-weight: 500; letter-spacing: -.04em; }
+.lv .ttl { font-size: 20px; font-weight: 700; }
+.lv .xp { margin-left: auto; font-family: var(--font-mono); font-size: 13px; }
+.xpbar { height: 6px; background: var(--line); }
+.xpbar i { display: block; height: 100%; background: var(--ink); transition: width .5s; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+.fact { padding: 12px 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fact + .fact { padding-left: 14px; border-left: 1px solid var(--line); }
+.fact b { font-family: var(--font-mono); font-size: 30px; font-weight: 500; line-height: 1.1; letter-spacing: -.03em; }
+.fact span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.irow { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.irow .t { display: flex; align-items: baseline; gap: 10px; }
+.irow .t b { font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.irow .v { font-family: var(--font-mono); font-size: 12px; color: var(--muted); flex: none; }
+.wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.wk i { height: 6px; background: var(--line); }
+.wk i.on { background: var(--pc); }
+.heat-h, .heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.heat-h, .heat, .legend { max-width: 460px; }
+.heat-h { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: center; text-transform: uppercase; }
+.cell { aspect-ratio: 1 / 1; max-width: 100%; border: 1px solid var(--line); background: var(--panel); cursor: pointer; padding: 0; font-family: var(--font-mono); font-size: 11px; color: var(--muted); border-radius: 1px; }
+.cell:hover { border-color: var(--ink); }
+.cell.kept { background: var(--ink); border-color: var(--ink); color: var(--ink-fg); font-weight: 600; }
+.cell.part { background: var(--line); color: var(--fg); }
+.cell.rest { border: 1px dashed var(--ink); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; background: var(--line); }
+.legend .k::before { background: var(--ink); }
+.legend .r::before { background: transparent; border: 1px dashed var(--ink); }
+.trends { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.tr { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tr svg { width: 100%; height: 40px; color: var(--fg); }
+.tr b { font-family: var(--font-mono); font-size: 17px; font-weight: 500; }
+.ms { display: flex; align-items: baseline; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.ms .m { width: 10px; height: 10px; flex: none; border: 1px solid var(--fg); }
+.ms.on .m { background: var(--ink); }
+.ms b { font-weight: 600; }
+.ms span { margin-left: auto; font-size: 13px; color: var(--muted); text-align: right; }
+.ms:not(.on) b { color: var(--muted); font-weight: 500; }
+
+/* plan */
+.ph2 { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.ph2 .c { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.ph2 .mk { align-self: center; }
+.prow2 { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); min-height: 52px; }
+.prow2 .t { flex: 1; min-width: 0; padding: 10px 0; overflow-wrap: anywhere; }
+.prow2 .t small { display: block; color: var(--muted); font-size: 12px; }
+.ibtn { min-width: 44px; height: 40px; padding: 0 6px; border: 0; background: none; cursor: pointer; color: var(--muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.ibtn:hover { color: var(--fg); text-decoration: underline; }
+.ibtn.on { color: var(--fg); font-weight: 600; }
+.ibtn.on::before { content: "\25A0\00a0"; font-size: 8px; vertical-align: 1px; }
+.editor { border: 1px solid var(--ink); background: var(--panel); padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-block: 10px; }
+.chkline { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.chkline input { width: 18px; height: 18px; accent-color: var(--ink); }
+.lib { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); padding: 8px 0; }
+.lib .t { flex: 1; min-width: 0; }
+.lib small { display: block; color: var(--muted); font-size: 12px; }
+
+/* me */
+.entry { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.entry p { font-size: 14px; }
+.entry p b { font-family: var(--font-mono); color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; margin-right: 8px; }
+.why { font-size: 22px; line-height: 1.3; font-weight: 600; letter-spacing: -.01em; }
+.how { display: flex; flex-direction: column; gap: 0; padding: 0; list-style: none; }
+.how li { padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.how b { font-weight: 650; }
+
+/* toast */
+#toast { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(68px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--ink-fg); padding: 12px 16px; font-size: 14px; font-weight: 550; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s, transform .2s; z-index: 30; border-radius: 2px; max-width: 440px; }
+#toast.on { opacity: 1; transform: none; }
+
+/* desktop */
+@media (min-width: 880px) {
+  body { padding-block: 40px 56px; }
+  .shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); column-gap: 56px; align-items: start; }
+  .tabs { position: sticky; top: 40px; left: auto; right: auto; bottom: auto; display: flex; flex-direction: column; gap: 24px; background: transparent; border: 0; padding: 0; z-index: 1; }
+  .tabs .brand { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+  .tabs .brand span { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+  .tabs .links { display: flex; flex-direction: column; }
+  .tabs button { text-align: left; border-top: 0; border-left: 3px solid transparent; margin: 0; padding: 10px 0 10px 12px; min-height: 0; font-size: 13px; }
+  .tabs button[aria-current="page"] { border-left-color: var(--ink); }
+  .tabs .glance { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; }
+  .tabs .glance div { display: flex; justify-content: space-between; gap: 8px; }
+  .tabs .glance span { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tabs .keys { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--muted); line-height: 1.7; }
+  #view { gap: 36px; }
+  h1 { font-size: 46px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+  .cb { position: relative; }
+  #toast { left: 50%; right: auto; bottom: 28px; transform: translate(-50%, 8px); min-width: 260px; text-align: center; }
+  #toast.on { transform: translate(-50%, 0); }
+}
+@media (min-width: 880px) and (max-width: 1099px) {
+  .cols { grid-template-columns: 1fr; gap: 36px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  <main class="app"><div id="view"></div></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="imp" accept="application/json,.json" hidden>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "lifemaxing-v3";
+  var OLD = ["lifemaxing-daily-v2", "lifemaxing-daily-v1"];
+  var TABS = ["today", "journey", "plan", "me"];
+  var TAB_LABEL = { today: "Today", journey: "Journey", plan: "Plan", me: "Me" };
+  var CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke-width="2.6" stroke-linecap="square"><path d="M2.5 7.5l3 3 6-7"/></svg>';
+
+  var PILLARS = [
+    { id: "faith", name: "Faith", blurb: "Time with God", ident: "I am someone who puts God first." },
+    { id: "looks", name: "Looks", blurb: "Skin, hair, grooming, style", ident: "I take care of how I look and feel." },
+    { id: "body", name: "Body", blurb: "Training, food, sleep", ident: "I am strong and disciplined." },
+    { id: "mind", name: "Mind", blurb: "Focus and peace", ident: "I am calm, focused and always learning." },
+    { id: "money", name: "Money", blurb: "Earn, save, track", ident: "I build wealth patiently and wisely." }
+  ];
+  var SLOTS = ["Morning", "Afternoon", "Evening", "Anytime"];
+  // id, pillar, name, slot, core, cue, tiny
+  var STARTER = [
+    ["f1", "faith", "Morning prayer", "Morning", 1, "After I sit up in bed", "Say one sentence of thanks to God"],
+    ["f2", "faith", "Read scripture for 10 minutes", "Morning", 0, "After my morning prayer", "Read one verse"],
+    ["f3", "faith", "Write 3 things I am grateful for", "Evening", 0, "After dinner", "Name one thing"],
+    ["f4", "faith", "Evening prayer", "Evening", 1, "When I get into bed", "Say goodnight to God"],
+    ["l1", "looks", "Morning skincare: cleanse, moisturize, SPF", "Morning", 1, "After I brush my teeth", "Just put on sunscreen"],
+    ["l2", "looks", "Brush and floss", "Morning", 0, "Before I leave the bathroom", "Floss the front teeth only"],
+    ["l3", "looks", "Dress with intention", "Morning", 0, "After skincare", "Pick a clean outfit"],
+    ["l4", "looks", "Posture reset: chin tucked, shoulders back", "Afternoon", 0, "Every time I sit down to work", "Three slow resets"],
+    ["l5", "looks", "Groom: hair, nails, facial hair", "Anytime", 0, "After my shower", "Comb hair and check nails"],
+    ["l6", "looks", "Evening skincare", "Evening", 0, "After I brush my teeth tonight", "Cleanse only"],
+    ["b1", "body", "Workout or 30 minute walk", "Afternoon", 1, "After lunch", "Walk for 5 minutes"],
+    ["b2", "body", "Protein with every meal", "Anytime", 0, "When I plan each meal", "Protein with one meal"],
+    ["b3", "body", "Drink 2 liters of water", "Anytime", 0, "When I fill my bottle in the morning", "Drink one glass now"],
+    ["b4", "body", "Lights out by 11 pm", "Evening", 1, "Phone goes on the charger at 10:30", "Phone down by 11"],
+    ["m1", "mind", "No phone for the first 30 minutes", "Morning", 0, "Phone stays on the charger", "First 10 minutes only"],
+    ["m2", "mind", "Read 10 pages", "Evening", 0, "After I get into bed", "Read one page"],
+    ["m3", "mind", "Plan tomorrow's top 3", "Evening", 0, "After dinner", "Write one priority"],
+    ["c1", "money", "One focused hour on a skill or income", "Afternoon", 1, "At a fixed start time, phone in another room", "10 focused minutes"],
+    ["c2", "money", "Log today's spending", "Evening", 0, "Before bed", "Log one purchase"],
+    ["c3", "money", "No impulse purchases", "Anytime", 0, "When I want to buy something", "Wait one hour"]
+  ];
+  var LIBRARY = [
+    ["looks", "Exfoliate (2 times a week)", "Evening", "After cleansing on Tuesday and Friday", "Just one spot"],
+    ["looks", "Weekly progress photo", "Anytime", "Sunday after my shower", "Take it, skip the review"],
+    ["looks", "Fresh clothes and fragrance", "Morning", "After I get dressed", "Fresh clothes only"],
+    ["body", "10,000 steps", "Anytime", "Check steps after lunch", "3,000 steps"],
+    ["body", "Strength training session", "Afternoon", "After I change into gym clothes", "One set of one exercise"],
+    ["body", "Stretch or mobility, 10 minutes", "Evening", "While the TV is on", "Two stretches"],
+    ["body", "Morning sunlight, 10 minutes", "Morning", "With my first drink", "Step outside for one minute"],
+    ["body", "No caffeine after 2 pm", "Afternoon", "When I finish lunch", "Switch to water after 3 pm"],
+    ["faith", "Memorize a verse", "Morning", "While I brush my teeth", "Read it once aloud"],
+    ["faith", "Serve or help someone", "Anytime", "When I notice a need", "Send one kind message"],
+    ["faith", "Pray for 3 people by name", "Evening", "After my gratitude list", "Pray for one person"],
+    ["mind", "Breathe or meditate, 5 minutes", "Morning", "After my prayer", "Three slow breaths"],
+    ["mind", "Journal for 5 minutes", "Evening", "After I plan tomorrow", "One sentence"],
+    ["mind", "Learn something new, 20 minutes", "Afternoon", "After my focused hour", "5 minutes"],
+    ["mind", "Screens off one hour before bed", "Evening", "At 10 pm", "Screens off 20 minutes before bed"],
+    ["money", "One income action (outreach, apply, pitch)", "Afternoon", "Right after lunch", "Write one message"],
+    ["money", "Move money to savings", "Anytime", "On payday", "Move any amount"],
+    ["money", "Weekly budget review", "Anytime", "Sunday afternoon", "Check the balance"]
+  ];
+  var VERSES = [
+    ["Trust in the Lord with all thine heart; and lean not unto thine own understanding.", "Proverbs 3:5"],
+    ["I can do all things through Christ which strengtheneth me.", "Philippians 4:13"],
+    ["Be strong and of a good courage; be not afraid, neither be thou dismayed.", "Joshua 1:9"],
+    ["Seek ye first the kingdom of God, and his righteousness.", "Matthew 6:33"],
+    ["Whatsoever thy hand findeth to do, do it with thy might.", "Ecclesiastes 9:10"],
+    ["The Lord is my shepherd; I shall not want.", "Psalm 23:1"],
+    ["Be still, and know that I am God.", "Psalm 46:10"],
+    ["Commit thy works unto the Lord, and thy thoughts shall be established.", "Proverbs 16:3"],
+    ["In all thy ways acknowledge him, and he shall direct thy paths.", "Proverbs 3:6"],
+    ["Let your light so shine before men, that they may see your good works.", "Matthew 5:16"],
+    ["Create in me a clean heart, O God; and renew a right spirit within me.", "Psalm 51:10"],
+    ["Casting all your care upon him; for he careth for you.", "1 Peter 5:7"],
+    ["God hath not given us the spirit of fear; but of power, and of love, and of a sound mind.", "2 Timothy 1:7"],
+    ["The fear of the Lord is the beginning of wisdom.", "Proverbs 9:10"],
+    ["Rejoice evermore. Pray without ceasing. In every thing give thanks.", "1 Thessalonians 5:16-18"],
+    ["Delight thyself also in the Lord; and he shall give thee the desires of thine heart.", "Psalm 37:4"]
+  ];
+  var TITLES = ["Beginner", "Builder", "Steady", "Disciplined", "Focused", "Resolute", "Relentless", "Master"];
+
+  /* ---------- helpers ---------- */
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function dkey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parse(k) { var p = k.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+  function shift(k, n) { return dkey(addDays(parse(k), n)); }
+  function keyAgo(n) { return dkey(addDays(new Date(), -n)); }
+  function weekStart(k) { var d = parse(k); var wd = (d.getDay() + 6) % 7; return dkey(addDays(d, -wd)); }
+  function pillarById(id) { return PILLARS.filter(function (p) { return p.id === id; })[0]; }
+  function obj(x) { return x && typeof x === "object" && !Array.isArray(x) ? x : {}; }
+  function fmtDay(k, o) { return parse(k).toLocaleDateString(undefined, o || { weekday: "long", day: "numeric", month: "long" }); }
+  function plural(n, a, b) { return n === 1 ? a : b; }
+
+  /* ---------- state ---------- */
+  function defaults() {
+    var ident = {}; PILLARS.forEach(function (p) { ident[p.id] = p.ident; });
+    return {
+      v: 3, updatedAt: 0, seen: false, why: "",
+      tasks: STARTER.map(function (t) { return { id: t[0], pillar: t[1], name: t[2], slot: t[3], core: !!t[4], cue: t[5], tiny: t[6] }; }),
+      done: {}, notes: {}, vitals: {}, rest: {}, low: {}, weekly: {}, ident: ident
+    };
+  }
+  function normalize(d) {
+    var base = defaults();
+    if (!d || typeof d !== "object") return base;
+    var tasks = Array.isArray(d.tasks) ? d.tasks.filter(function (t) { return t && t.id && t.name && pillarById(t.pillar); }).map(function (t) {
+      var st = STARTER.filter(function (s) { return s[0] === t.id; })[0];
+      return {
+        id: String(t.id), pillar: t.pillar, name: String(t.name), slot: SLOTS.indexOf(t.slot) > -1 ? t.slot : "Anytime",
+        core: t.core != null ? !!t.core : (st ? !!st[4] : false),
+        cue: t.cue != null ? String(t.cue) : (st ? st[5] : ""),
+        tiny: t.tiny != null ? String(t.tiny) : (st ? st[6] : "")
+      };
+    }) : base.tasks;
+    var done = {};
+    var rd = obj(d.done);
+    Object.keys(rd).forEach(function (day) {
+      var v = rd[day], o = {};
+      if (Array.isArray(v)) v.forEach(function (id) { o[id] = 2; });
+      else if (v && typeof v === "object") Object.keys(v).forEach(function (id) { if (v[id] === 1 || v[id] === 2) o[id] = v[id]; });
+      if (Object.keys(o).length) done[day] = o;
+    });
+    var notes = {};
+    var rn = obj(d.notes);
+    Object.keys(rn).forEach(function (day) {
+      var n = obj(rn[day]), o = {};
+      if (n.i) o.i = String(n.i);
+      if (n.w) o.w = String(n.w);
+      if (n.g) o.g = String(n.g);
+      if (n.l) o.l = String(n.l);
+      if (n.r && !n.l) o.l = String(n.r);
+      if (Array.isArray(n.t)) o.t = n.t.map(function (x) { return { x: String((x && x.x) || ""), d: !!(x && x.d) }; });
+      if (Object.keys(o).length) notes[day] = o;
+    });
+    var ident = {};
+    PILLARS.forEach(function (p) { ident[p.id] = (obj(d.ident)[p.id]) || p.ident; });
+    return {
+      v: 3, updatedAt: typeof d.updatedAt === "number" ? d.updatedAt : 0, seen: !!d.seen, why: d.why ? String(d.why) : "",
+      tasks: tasks, done: done, notes: notes, vitals: obj(d.vitals), rest: obj(d.rest), low: obj(d.low), weekly: obj(d.weekly), ident: ident
+    };
+  }
+
+  var state = defaults();
+  try {
+    var raw = localStorage.getItem(KEY);
+    for (var oi = 0; !raw && oi < OLD.length; oi++) raw = localStorage.getItem(OLD[oi]);
+    if (raw) state = normalize(JSON.parse(raw));
+  } catch (e) {}
+
+  var ver = 1;
+  var todayKey = dkey(new Date());
+  var viewDay = todayKey;
+  var expanded = null, snoozed = [], popId = null, editId = null, draft = null, libOpen = false;
+  var checkinOpen = null, confirmReset = false, ref = null, downloads = null;
+  var inArtifact = !!(window.claude && window.claude.use);
+  var timer = null, inflight = false, queued = false, noteTimer = null, toastTimer = null;
+  var lastSync = "Saved on this device.";
+
+  function setNote(t) { lastSync = t; var n = $("#syncNote"); if (n) n.textContent = t; }
+  function persistLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function touch() { ver++; state.updatedAt = Date.now(); persistLocal(); schedule(); }
+  function schedule() {
+    if (!ref) { setNote("Saved on this device."); return; }
+    setNote("Saving...");
+    clearTimeout(timer);
+    timer = setTimeout(flush, 600);
+  }
+  function flush() {
+    if (inflight) { queued = true; return; }
+    inflight = true;
+    ref.set(JSON.parse(JSON.stringify(state))).then(function () {
+      setNote("Saved to your account.");
+    }, function () {
+      setNote("Saved on this device only.");
+    }).then(function () {
+      inflight = false;
+      if (queued) { queued = false; flush(); }
+    });
+  }
+  function saveSoon() { clearTimeout(noteTimer); noteTimer = setTimeout(touch, 500); }
+
+  /* ---------- model ---------- */
+  function taskById(id) { return state.tasks.filter(function (t) { return t.id === id; })[0]; }
+  function val(day, id) { var d = state.done[day]; return (d && d[id]) || 0; }
+  function isRest(day) { return !!state.rest[day]; }
+  var memo = {};
+  function memoize(name, fn) {
+    var m = memo[name];
+    if (m && m.ver === ver) return m.v;
+    var v = fn(); memo[name] = { ver: ver, v: v }; return v;
+  }
+  function dayStats(day) {
+    var total = state.tasks.length, dn = 0, core = 0, coreDn = 0;
+    state.tasks.forEach(function (t) {
+      var v = val(day, t.id);
+      if (v) dn++;
+      if (t.core) { core++; if (v) coreDn++; }
+    });
+    var pct = total ? dn / total : 0;
+    var kept = total > 0 && (core > 0 ? coreDn === core : pct >= 0.7);
+    return { total: total, done: dn, core: core, coreDone: coreDn, pct: pct, kept: kept, perfect: total > 0 && dn === total };
+  }
+  function dayXp(day) {
+    var xp = 0, d = state.done[day];
+    if (!d) return 0;
+    state.tasks.forEach(function (t) { var v = d[t.id]; if (v === 2) xp += 10; else if (v === 1) xp += 5; });
+    var s = dayStats(day);
+    if (s.kept) xp += 20;
+    if (s.perfect) xp += 30;
+    return xp;
+  }
+  function totalXp() {
+    return memoize("xp", function () {
+      var xp = 0;
+      Object.keys(state.done).forEach(function (day) { xp += dayXp(day); });
+      Object.keys(state.weekly).forEach(function (w) { var r = state.weekly[w]; if (r && (r.a || r.b || r.f)) xp += 25; });
+      return xp;
+    });
+  }
+  function need(L) { return 125 * L * (L - 1); }
+  function levelOf(xp) { var L = Math.floor((1 + Math.sqrt(1 + 4 * xp / 125)) / 2); return Math.max(1, L); }
+  function firstDay() {
+    var keys = Object.keys(state.done).concat(Object.keys(state.rest));
+    if (!keys.length) return todayKey;
+    keys.sort(); return keys[0] < todayKey ? keys[0] : todayKey;
+  }
+  function streaks() {
+    return memoize("streak", function () {
+      var n = 0, max = 0, miss = 0, k = firstDay(), guard = 0;
+      while (k <= todayKey && guard < 4000) {
+        if (isRest(k)) { /* neutral */ }
+        else if (dayStats(k).kept) { n++; miss = 0; if (n > max) max = n; }
+        else if (k !== todayKey) { miss++; if (miss >= 2) { n = 0; } }
+        k = shift(k, 1); guard++;
+      }
+      return { cur: n, max: max };
+    });
+  }
+  function votes() {
+    return memoize("votes", function () {
+      var out = {}, total = 0;
+      PILLARS.forEach(function (p) { out[p.id] = 0; });
+      Object.keys(state.done).forEach(function (day) {
+        var d = state.done[day];
+        Object.keys(d).forEach(function (id) { var t = taskById(id); if (t) { out[t.pillar]++; total++; } });
+      });
+      out.total = total; return out;
+    });
+  }
+  function pillarWeek(pid) {
+    var ts = state.tasks.filter(function (t) { return t.pillar === pid; });
+    var arr = [];
+    for (var i = 6; i >= 0; i--) {
+      var k = keyAgo(i);
+      arr.push(ts.length && ts.some(function (t) { return val(k, t.id); }));
+    }
+    return arr;
+  }
+  function currentSlot() { var hr = new Date().getHours(); return hr < 12 ? "Morning" : hr < 18 ? "Afternoon" : "Evening"; }
+  function restUsedInWeek(day) {
+    var ws = weekStart(day), n = 0;
+    for (var i = 0; i < 7; i++) if (isRest(shift(ws, i))) n++;
+    return n;
+  }
+  function taskStreak(id) {
+    var n = 0, i = val(keyAgo(0), id) ? 0 : 1;
+    while (i < 365 && val(keyAgo(i), id)) { n++; i++; }
+    return n;
+  }
+
+  /* ---------- views ---------- */
+  function slotRank(slot, cur) {
+    if (!cur) return SLOTS.indexOf(slot);
+    if (slot === cur) return 0;
+    if (slot === "Anytime") return 1;
+    var si = SLOTS.indexOf(slot), ci = SLOTS.indexOf(cur);
+    return si > ci ? 1 + (si - ci) : 6 + si;
+  }
+  function pickNext(remaining, isToday) {
+    var cur = isToday ? currentSlot() : null;
+    var list = remaining.filter(function (t) { return snoozed.indexOf(t.id) === -1; });
+    if (!list.length) { snoozed = []; list = remaining.slice(); }
+    list.sort(function (a, b) {
+      var d = slotRank(a.slot, cur) - slotRank(b.slot, cur);
+      if (d) return d;
+      if (a.core !== b.core) return a.core ? -1 : 1;
+      return state.tasks.indexOf(a) - state.tasks.indexOf(b);
+    });
+    return list[0];
+  }
+  function cols(a, b) { return '<div class="cols"><div class="ca">' + a + '</div><div class="cb">' + b + '</div></div>'; }
+
+  function vToday() {
+    var day = viewDay, isToday = day === todayKey;
+    var st = dayStats(day), low = !!state.low[day], rest = isRest(day);
+    var vis = low ? state.tasks.filter(function (t) { return t.core; }) : state.tasks;
+    var visDone = vis.filter(function (t) { return val(day, t.id); }).length;
+    var remaining = vis.filter(function (t) { return !val(day, t.id); });
+    var d0 = parse(day);
+    var dayNum = Math.floor(Date.UTC(d0.getFullYear(), d0.getMonth(), d0.getDate()) / 86400000);
+    var verse = VERSES[dayNum % VERSES.length];
+    var A = "", B = "";
+
+    var head = '<header class="head"><div><p class="kick">' + esc(fmtDay(day, { weekday: "short", day: "numeric", month: "short", year: "numeric" })) + (isToday ? " &middot; " + esc(currentSlot()) : "") + '</p><h1>' + (isToday ? "Today" : esc(fmtDay(day, { weekday: "long" }))) + '</h1></div>' +
+      '<div class="dnav"><button class="nb" data-act="prev" aria-label="Previous day">&lsaquo;</button><button class="nb" data-act="next" aria-label="Next day"' + (isToday ? " disabled" : "") + '>&rsaquo;</button>' + (isToday ? "" : '<button class="tx" data-act="today">Today</button>') + '</div></header>';
+
+    var tally = '<div class="tallyrow"><div class="tally" role="img" aria-label="' + visDone + ' of ' + vis.length + ' habits done">';
+    vis.forEach(function (t) {
+      var v = val(day, t.id);
+      tally += '<i class="' + (v === 2 ? "d" : v === 1 ? "t" : "") + (t.core ? " c" : "") + '" style="--pc:var(--p-' + t.pillar + ')"></i>';
+    });
+    tally += '</div><span class="mono">' + visDone + '/' + vis.length + '</span></div>';
+
+    var intro = "";
+    if (!state.seen) {
+      intro = '<div class="note"><b>How today works</b><p class="sm">One habit at a time. <b>Core</b> habits are your minimum: finish those and the day counts, even if the rest slips. On a hard day switch to Low energy. Every habit has a tiny version, and tiny still counts.</p><div class="row"><button class="btn" data-act="seen">Got it</button></div></div>';
+    }
+    var wk = state.weekly[weekStart(todayKey)];
+    var focusLine = (isToday && wk && wk.f) ? '<p class="sm"><span class="kick">This week</span> &nbsp;' + esc(wk.f) + '</p>' : "";
+    var sInfo = streaks(), warn = "";
+    if (isToday && !rest && !st.kept && !isRest(shift(todayKey, -1)) && !dayStats(shift(todayKey, -1)).kept && sInfo.cur >= 2) {
+      warn = '<div class="note warn"><b>Never miss twice</b><p class="sm">Yesterday slipped. Finish your core habits today and your ' + sInfo.cur + '-day run stays alive.' + (state.why ? ' Your why: ' + esc(state.why) : '') + '</p></div>';
+    }
+
+    var hero;
+    if (rest) {
+      hero = '<section class="next" style="--pc:var(--muted)"><p class="kick">Rest day</p><h2 class="t">Rest is part of the plan.</h2><p class="cue">Your streak is safe.</p><div class="btns"><button class="btn" data-act="rest">Undo rest day</button></div></section>';
+    } else if (!remaining.length) {
+      hero = '<section class="next" style="--pc:var(--p-body)"><p class="kick">' + (low ? "Low energy day complete" : "Day complete") + '</p><h2 class="t">' + (st.perfect ? "Perfect day." : st.kept ? "Day kept." : "Nice work.") + '</h2><p class="cue">' + st.done + ' of ' + st.total + ' habits done. ' + dayXp(day) + ' XP today.</p>' +
+        (low && st.total > vis.length ? '<div class="btns"><button class="btn" data-act="full">Do the rest of my habits</button></div>' : '') + '</section>';
+    } else {
+      var t = pickNext(remaining, isToday), p = pillarById(t.pillar), coreLeft = st.core - st.coreDone, grad;
+      if (st.core > 0 && coreLeft > 0) grad = '<b>' + coreLeft + ' core ' + plural(coreLeft, "habit", "habits") + ' left</b> to keep this day.';
+      else if (st.kept) grad = '<b>Day kept.</b> The rest is a bonus.';
+      else grad = '<b>' + remaining.length + ' left</b> today.';
+      hero = '<section class="next" style="--pc:var(--p-' + t.pillar + ')"><div class="meta"><span class="mk"></span><span class="kick">Next &middot; ' + esc(t.slot) + ' &middot; ' + esc(p.name) + '</span>' + (t.core ? '<span class="tag">Core</span>' : '') + '</div>' +
+        '<h2 class="t">' + esc(t.name) + '</h2>' + (t.cue ? '<p class="cue"><b>When:</b> ' + esc(t.cue) + '</p>' : '') +
+        '<button class="btn primary wide" data-act="done" data-id="' + esc(t.id) + '">Done</button>' +
+        '<div class="btns">' + (t.tiny ? '<button class="btn" data-act="tiny" data-id="' + esc(t.id) + '">Tiny: ' + esc(t.tiny) + '</button>' : '') +
+        (remaining.length > 1 ? '<button class="btn" data-act="snooze" data-id="' + esc(t.id) + '">Not now</button>' : '') + '</div>' +
+        '<p class="sm muted">' + grad + '</p></section>';
+    }
+
+    var canRest = !rest && restUsedInWeek(day) < 1;
+    var mode = '<div class="modebar"><div class="seg" role="group" aria-label="Day mode"><button data-act="mode-full" aria-pressed="' + (!low) + '">Full day</button><button data-act="mode-low" aria-pressed="' + low + '">Low energy</button></div>' +
+      (rest ? '' : (canRest ? '<button class="tx" data-act="rest">Take a rest day</button>' : '<span class="sm muted">Rest day used this week</span>')) + '</div>' +
+      (low ? '<p class="sm muted">Core habits only. Showing up small beats skipping.</p>' : '');
+
+    var routines = "";
+    if (!rest) {
+      var cur = isToday ? currentSlot() : null;
+      SLOTS.forEach(function (s) {
+        var ts = vis.filter(function (t) { return t.slot === s; });
+        if (!ts.length) return;
+        var dn = ts.filter(function (t) { return val(day, t.id); }).length;
+        routines += '<section class="slot"><div class="slot-h"><h2>' + esc(s) + '</h2>' + (cur === s ? '<span class="now">NOW</span>' : '') + '<span class="c">' + dn + '/' + ts.length + '</span></div>';
+        ts.forEach(function (t) {
+          var v = val(day, t.id), ts2 = isToday ? taskStreak(t.id) : 0, open = expanded === t.id;
+          routines += '<div class="rt' + (popId === t.id ? " pop" : "") + '" style="--pc:var(--p-' + t.pillar + ')">' +
+            '<button class="main" role="checkbox" data-act="toggle" data-id="' + esc(t.id) + '" aria-checked="' + (v === 2) + '"' + (v === 1 ? ' data-tiny="1"' : "") + '><span class="chk">' + CHECK + '</span><span class="nm">' + esc(t.name) + '</span>' +
+            '<span class="mt">' + (t.core ? '<span class="core">Core</span>' : '') + (ts2 >= 2 ? '<span>' + ts2 + 'd</span>' : '') + (v === 1 ? '<span>Tiny</span>' : '') + '</span></button>' +
+            '<button class="info" data-act="info" data-id="' + esc(t.id) + '" aria-expanded="' + open + '" aria-label="Details for ' + esc(t.name) + '">' + (open ? "−" : "+") + '</button></div>';
+          if (open) {
+            routines += '<div class="det">' + (t.cue ? '<p class="cue"><b>When:</b> ' + esc(t.cue) + '</p>' : '<p class="cue">No cue set. Add one in Plan.</p>') +
+              (t.tiny && v !== 1 && v !== 2 ? '<button class="btn" data-act="tiny" data-id="' + esc(t.id) + '">Tiny version: ' + esc(t.tiny) + '</button>' : '') + '</div>';
+          }
+        });
+        routines += '</section>';
+      });
+    }
+    A = hero + mode + routines;
+
+    var n = state.notes[day] || {};
+    var v = state.vitals[day] || {};
+    var focus = '<section class="sect"><h2>Focus</h2><div class="field"><label for="intent">Intention for God</label><input class="input" id="intent" data-f="intent" type="text" maxlength="200" placeholder="What am I giving to God today?" value="' + esc(n.i || "") + '" autocomplete="off"></div>' +
+      '<div class="stack"><span class="lbl">Top 3</span>';
+    for (var i = 0; i < 3; i++) {
+      var tp = (n.t && n.t[i]) || {};
+      focus += '<div class="prow"><button class="chk" data-act="prio" data-i="' + i + '" role="checkbox" aria-checked="' + !!tp.d + '" aria-label="Priority ' + (i + 1) + ' done">' + CHECK + '</button><input class="input' + (tp.d ? " done" : "") + '" data-f="prio" data-i="' + i + '" type="text" maxlength="120" aria-label="Priority ' + (i + 1) + '" placeholder="' + ["Most important thing", "Second", "Third"][i] + '" value="' + esc(tp.x || "") + '"></div>';
+    }
+    focus += '</div></section>';
+
+    var openCi = checkinOpen != null ? checkinOpen : (isToday ? new Date().getHours() >= 17 : false) || !!(n.w || n.g || n.l);
+    var ci = '<details class="ci" id="ci"' + (openCi ? " open" : "") + '><summary><h2 style="border:0;padding:0">Close the day</h2></summary><div class="stack">' +
+      '<div class="field"><label for="win">One win</label><textarea class="input" id="win" data-f="win" maxlength="500" placeholder="What went well today?">' + esc(n.w || "") + '</textarea></div>' +
+      '<div class="field"><label for="grat">Grateful for</label><textarea class="input" id="grat" data-f="grat" maxlength="500" placeholder="Three things, however small.">' + esc(n.g || "") + '</textarea></div>' +
+      '<div class="field"><label for="less">Lesson for tomorrow</label><textarea class="input" id="less" data-f="less" maxlength="500" placeholder="What will I do differently?">' + esc(n.l || "") + '</textarea></div>' +
+      '<div class="field"><span class="lbl" id="moodL">Mood</span><div class="mood" role="group" aria-labelledby="moodL">';
+    for (var m = 1; m <= 5; m++) ci += '<button data-act="mood" data-m="' + m + '" aria-pressed="' + (v.m === m) + '" aria-label="Mood ' + m + ' of 5">' + m + '</button>';
+    ci += '</div><div class="moodkey"><span>Low</span><span>High</span></div></div><div class="two"><div class="field"><label for="sleep">Sleep (hours)</label><input class="input" id="sleep" data-f="sleep" type="number" inputmode="decimal" min="0" max="16" step="0.5" placeholder="7.5" value="' + (v.s != null ? esc(v.s) : "") + '"></div>' +
+      '<div class="field"><label for="weight">Weight (kg)</label><input class="input" id="weight" data-f="weight" type="number" inputmode="decimal" min="20" max="400" step="0.1" placeholder="70.0" value="' + (v.w != null ? esc(v.w) : "") + '"></div></div></div></details>';
+    B = '<p class="verse"><b>' + esc(verse[1]) + '</b>' + esc(verse[0]) + '</p>' + focus + ci;
+
+    return head + tally + intro + warn + focusLine + cols(A, B);
+  }
+
+  function spark(key) {
+    var pts = [];
+    for (var i = 27; i >= 0; i--) { var v = state.vitals[keyAgo(i)]; pts.push(v && v[key] != null && v[key] !== "" ? +v[key] : null); }
+    var vals = pts.filter(function (x) { return x != null; });
+    var s = '<svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="200" y1="39" y2="39" stroke="var(--line)" stroke-width="1"/>';
+    if (vals.length >= 2) {
+      var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+      if (key === "m") { mn = 1; mx = 5; }
+      if (mx === mn) { mx += 1; mn -= 1; }
+      var d = "", last = null;
+      pts.forEach(function (v, i) {
+        if (v == null) return;
+        var x = (i / 27) * 194 + 3, y = 35 - ((v - mn) / (mx - mn)) * 30;
+        d += (d ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1); last = [x, y];
+      });
+      s += '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="miter" vector-effect="non-scaling-stroke"/><rect x="' + (last[0] - 3).toFixed(1) + '" y="' + (last[1] - 3).toFixed(1) + '" width="6" height="6" fill="currentColor"/>';
+    }
+    return s + '</svg>';
+  }
+  function latest(key, unit) {
+    for (var i = 0; i < 60; i++) { var v = state.vitals[keyAgo(i)]; if (v && v[key] != null && v[key] !== "") return v[key] + " " + unit; }
+    return "No data";
+  }
+  function avgWeek(key) {
+    var s = 0, c = 0;
+    for (var i = 0; i < 7; i++) { var v = state.vitals[keyAgo(i)]; if (v && v[key] != null && v[key] !== "") { s += +v[key]; c++; } }
+    return c ? (s / c) : null;
+  }
+
+  function vJourney() {
+    var xp = totalXp(), L = levelOf(xp), lo = need(L), hi = need(L + 1);
+    var prog = Math.max(0, Math.min(1, (xp - lo) / (hi - lo)));
+    var sk = streaks(), vt = votes();
+    var head = '<header class="head"><div><p class="kick">Progress</p><h1>Journey</h1></div></header>';
+    var A = '<section class="sect"><h2>Level</h2><div class="lv"><span class="num">' + L + '</span><span class="ttl">' + esc(TITLES[Math.min(L - 1, TITLES.length - 1)]) + '</span><span class="xp">' + xp + ' XP</span></div><div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(prog * 100) + '" aria-label="Progress to next level"><i style="width:' + Math.round(prog * 100) + '%"></i></div><p class="sm muted">' + (hi - xp) + ' XP to level ' + (L + 1) + '</p></section>';
+    A += '<section><div class="facts"><div class="fact"><b>' + sk.cur + '</b><span>Streak</span></div><div class="fact"><b>' + sk.max + '</b><span>Best</span></div><div class="fact"><b>' + vt.total + '</b><span>Votes</span></div></div>' +
+      '<p class="sm muted" style="margin-top:10px">A day is kept when all core habits are done. One missed day never breaks a streak. Two in a row does.</p></section>';
+
+    A += '<section class="sect"><h2>Identity</h2><p class="sm muted">Each habit you complete is a vote for the person you are becoming.</p><div>';
+    PILLARS.forEach(function (p) {
+      var wk = pillarWeek(p.id);
+      A += '<div class="irow" style="--pc:var(--p-' + p.id + ')"><div class="t"><span class="mk"></span><b>' + esc(state.ident[p.id] || p.ident) + '</b><span class="v">' + vt[p.id] + ' ' + plural(vt[p.id], "vote", "votes") + '</span></div><div class="wk" aria-label="' + esc(p.name) + ', last 7 days">' + wk.map(function (on) { return '<i class="' + (on ? "on" : "") + '"></i>'; }).join("") + '</div></div>';
+    });
+    A += '</div></section>';
+
+    var wk0 = weekStart(todayKey), wr = state.weekly[wk0] || {}, keptN = 0, tot = 0;
+    for (var j = 0; j < 7; j++) { var kk = shift(wk0, j); if (kk <= todayKey) { tot++; if (dayStats(kk).kept) keptN++; } }
+    var isMon = new Date().getDay() === 1;
+    A += '<section class="sect"><h2>' + (isMon ? "New week" : "This week") + '</h2><p class="sm muted">' + keptN + ' of ' + tot + ' ' + plural(tot, "day", "days") + ' kept so far. Writing a plan makes follow-through more likely. A review earns 25 XP.</p>' +
+      '<div class="field"><label for="wa">What worked</label><textarea class="input" id="wa" data-f="wa" maxlength="500">' + esc(wr.a || "") + '</textarea></div>' +
+      '<div class="field"><label for="wb">What I will change</label><textarea class="input" id="wb" data-f="wb" maxlength="500">' + esc(wr.b || "") + '</textarea></div>' +
+      '<div class="field"><label for="wf">One focus for the week</label><input class="input" id="wf" data-f="wf" type="text" maxlength="120" value="' + esc(wr.f || "") + '" placeholder="e.g. Lights out by 11, every night"></div></section>';
+
+    var start = addDays(new Date(), -27);
+    var B = '<section class="sect"><h2>Last 28 days</h2><div class="heat-h">';
+    for (var c = 0; c < 7; c++) B += '<span>' + esc(addDays(start, c).toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)) + '</span>';
+    B += '</div><div class="heat">';
+    for (var i = 27; i >= 0; i--) {
+      var d = addDays(new Date(), -i), k = dkey(d), s = dayStats(k);
+      var cls = isRest(k) ? "rest" : s.kept ? "kept" : s.done > 0 ? "part" : "";
+      B += '<button class="cell ' + cls + '" data-act="goday" data-day="' + k + '" aria-label="' + esc(fmtDay(k)) + ', ' + (isRest(k) ? "rest day" : s.kept ? "kept" : s.done + " habits done") + '">' + d.getDate() + '</button>';
+    }
+    B += '</div><div class="legend"><span class="k">Kept</span><span>Partial</span><span class="r">Rest</span></div></section>';
+
+    var sl = avgWeek("s"), mo = avgWeek("m");
+    B += '<section class="sect"><h2>Trends</h2><div class="trends"><div class="tr"><span class="lbl">Mood</span><b>' + (mo ? mo.toFixed(1) + "/5" : "No data") + '</b>' + spark("m") + '</div><div class="tr"><span class="lbl">Sleep</span><b>' + (sl ? sl.toFixed(1) + " h" : "No data") + '</b>' + spark("s") + '</div><div class="tr"><span class="lbl">Weight</span><b>' + esc(latest("w", "kg")) + '</b>' + spark("w") + '</div></div><p class="sm muted">Mood and sleep are 7-day averages. Lines cover 28 days.</p></section>';
+
+    var perfectEver = Object.keys(state.done).some(function (k) { return dayStats(k).perfect; });
+    var keptEver = Object.keys(state.done).some(function (k) { return dayStats(k).kept; });
+    var reviewed = Object.keys(state.weekly).some(function (w) { var r = state.weekly[w]; return r && (r.a || r.b || r.f); });
+    var M = [
+      ["First vote", "Complete a habit", vt.total >= 1], ["Day kept", "Finish all core habits", keptEver], ["Perfect day", "Every habit done", perfectEver],
+      ["3 days", "3 days in a row", sk.max >= 3], ["7 days", "7 days in a row", sk.max >= 7], ["14 days", "14 days in a row", sk.max >= 14],
+      ["30 days", "30 days in a row", sk.max >= 30], ["60 days", "60 days in a row", sk.max >= 60], ["100 days", "100 days in a row", sk.max >= 100],
+      ["100 votes", "100 habits done", vt.total >= 100], ["500 votes", "500 habits done", vt.total >= 500], ["Weekly review", "Write a weekly review", reviewed]
+    ];
+    B += '<section class="sect"><h2>Milestones</h2><div>' + M.map(function (b) { return '<div class="ms ' + (b[2] ? "on" : "") + '"><i class="m"></i><b>' + esc(b[0]) + '</b><span>' + esc(b[1]) + '</span></div>'; }).join("") + '</div></section>';
+    return head + cols(A, B);
+  }
+
+  function editorHtml(d, isNew) {
+    return '<div class="editor"><div class="field"><label for="d-name">Habit</label><input class="input" id="d-name" data-f="d-name" type="text" maxlength="80" value="' + esc(d.name) + '" placeholder="What will I do?"></div>' +
+      '<div class="two"><div class="field"><label for="d-pillar">Pillar</label><select class="input" id="d-pillar" data-f="d-pillar">' + PILLARS.map(function (p) { return '<option value="' + p.id + '"' + (p.id === d.pillar ? " selected" : "") + '>' + esc(p.name) + '</option>'; }).join("") + '</select></div>' +
+      '<div class="field"><label for="d-slot">When</label><select class="input" id="d-slot" data-f="d-slot">' + SLOTS.map(function (s) { return '<option' + (s === d.slot ? " selected" : "") + '>' + s + '</option>'; }).join("") + '</select></div></div>' +
+      '<div class="field"><label for="d-cue">Cue: after I...</label><input class="input" id="d-cue" data-f="d-cue" type="text" maxlength="100" value="' + esc(d.cue) + '" placeholder="After I brush my teeth"></div>' +
+      '<div class="field"><label for="d-tiny">Tiny version for hard days</label><input class="input" id="d-tiny" data-f="d-tiny" type="text" maxlength="100" value="' + esc(d.tiny) + '" placeholder="The 2 minute version"></div>' +
+      '<label class="chkline"><input type="checkbox" id="d-core" data-f="d-core"' + (d.core ? " checked" : "") + '><span>Core habit (needed for a kept day)</span></label>' +
+      '<div class="btns"><button class="btn primary" style="min-height:46px;font-size:15px" data-act="save-task">' + (isNew ? "Add habit" : "Save") + '</button><button class="btn" data-act="cancel-edit">Cancel</button>' + (isNew ? "" : '<button class="btn danger" data-act="del-task" data-id="' + esc(editId) + '">Delete</button>') + '</div></div>';
+  }
+  function vPlan() {
+    var coreN = state.tasks.filter(function (t) { return t.core; }).length;
+    var head = '<header class="head"><div><p class="kick">' + coreN + ' core &middot; ' + state.tasks.length + ' habits</p><h1>Plan</h1></div><div class="dnav"><button class="btn" data-act="new-task">Add habit</button></div></header>' +
+      '<p class="sm muted" style="max-width:62ch">Core habits are your minimum. Keep them to five or six, small enough for your worst day. Give each habit a cue ("after I...") and a tiny version.</p>';
+    var A = "";
+    if (editId === "new") A += editorHtml(draft, true);
+    PILLARS.forEach(function (p) {
+      var ts = state.tasks.filter(function (t) { return t.pillar === p.id; });
+      A += '<section class="slot" style="--pc:var(--p-' + p.id + ')"><div class="ph2"><span class="mk"></span><h2>' + esc(p.name) + '</h2><span class="muted sm">' + esc(p.blurb) + '</span><span class="c">' + ts.length + '</span></div>' +
+        '<div class="field" style="padding:10px 0"><label for="id-' + p.id + '">I am someone who...</label><input class="input" id="id-' + p.id + '" data-f="ident" data-p="' + p.id + '" type="text" maxlength="100" value="' + esc(state.ident[p.id] || "") + '"></div>';
+      if (!ts.length) A += '<p class="sm muted" style="padding:6px 0">No habits yet.</p>';
+      ts.forEach(function (t) {
+        if (editId === t.id) { A += editorHtml(draft, false); return; }
+        A += '<div class="prow2"><div class="t">' + esc(t.name) + '<small>' + esc(t.slot) + (t.cue ? " &middot; " + esc(t.cue) : "") + '</small></div>' +
+          '<button class="ibtn' + (t.core ? " on" : "") + '" data-act="core" data-id="' + esc(t.id) + '" aria-pressed="' + t.core + '" aria-label="' + (t.core ? "Remove core status from " : "Make core: ") + esc(t.name) + '">Core</button>' +
+          '<button class="ibtn" data-act="edit-task" data-id="' + esc(t.id) + '" aria-label="Edit ' + esc(t.name) + '">Edit</button></div>';
+      });
+      A += '</section>';
+    });
+    var have = state.tasks.map(function (t) { return t.name.toLowerCase(); });
+    var avail = LIBRARY.map(function (l, i) { return { l: l, i: i }; }).filter(function (x) { return have.indexOf(x.l[1].toLowerCase()) === -1; });
+    var B = '<section class="sect"><h2>Ideas library</h2><p class="sm muted">Ready-made habits with cues and tiny versions. Add what fits.</p>' +
+      '<div class="btns"><button class="btn" data-act="lib" aria-expanded="' + libOpen + '">' + (libOpen ? "Hide ideas" : "Browse " + avail.length + " ideas") + '</button></div>';
+    if (libOpen) {
+      B += '<div>' + avail.map(function (x) {
+        return '<div class="lib" style="--pc:var(--p-' + x.l[0] + ')"><span class="mk"></span><div class="t">' + esc(x.l[1]) + '<small>' + esc(pillarById(x.l[0]).name) + ' &middot; ' + esc(x.l[2]) + '</small></div><button class="btn" style="min-height:38px;padding:4px 12px" data-act="add-lib" data-i="' + x.i + '">Add</button></div>';
+      }).join("") + '</div>';
+    }
+    B += '</section>';
+    return head + cols(A, B);
+  }
+
+  function vMe() {
+    var head = '<header class="head"><div><p class="kick">Reason, journal, data</p><h1>Me</h1></div></header>';
+    var A = '<section class="sect"><h2>My why</h2>' + (state.why ? '<p class="why">' + esc(state.why) + '</p>' : '<p class="sm muted">Write the reason behind all of this. You will see it on the days you want to quit.</p>') +
+      '<div class="field"><label for="why">Edit</label><textarea class="input" id="why" data-f="why" maxlength="400" placeholder="Why am I building this life?">' + esc(state.why) + '</textarea></div></section>';
+    var days = Object.keys(state.notes).filter(function (k) { var n = state.notes[k]; return n.i || n.w || n.g || n.l; }).sort().reverse().slice(0, 14);
+    A += '<section class="sect"><h2>Journal</h2>';
+    if (!days.length) A += '<p class="sm muted">Your intentions, wins, gratitude and lessons collect here.</p>';
+    days.forEach(function (k) {
+      var n = state.notes[k];
+      A += '<div class="entry"><span class="kick">' + esc(fmtDay(k, { weekday: "short", day: "numeric", month: "short" })) + '</span>' +
+        (n.i ? '<p><b>Intention</b>' + esc(n.i) + '</p>' : '') + (n.w ? '<p><b>Win</b>' + esc(n.w) + '</p>' : '') + (n.g ? '<p><b>Grateful</b>' + esc(n.g) + '</p>' : '') + (n.l ? '<p><b>Lesson</b>' + esc(n.l) + '</p>' : '') + '</div>';
+    });
+    A += '</section>';
+
+    var canExport = !!downloads || !inArtifact;
+    var B = '<section class="sect"><h2>Your data</h2><p class="sm muted">Everything lives in this browser' + (inArtifact ? ' and your account' : '') + '. Back it up before clearing browser data or switching devices.</p><div class="btns">' +
+      (canExport ? '<button class="btn" data-act="exp-json">Export backup</button><button class="btn" data-act="exp-csv">Export CSV</button>' : '') + '<button class="btn" data-act="import">Import backup</button></div>' +
+      '<p class="sm muted" id="syncNote">' + esc(lastSync) + '</p>' +
+      '<div class="btns">' + (confirmReset ? '<button class="btn danger" data-act="reset-yes">Tap again to erase everything</button><button class="btn" data-act="reset-no">Keep my data</button>' : '<button class="btn danger" data-act="reset">Reset all data</button>') + '</div></section>';
+    B += '<section class="sect"><h2>How it works</h2><ul class="how">' +
+      '<li><b>One thing at a time</b><span class="sm muted">The Next card removes the "what now?" decision.</span></li>' +
+      '<li><b>Cues and tiny versions</b><span class="sm muted">Tying a habit to something you already do, and shrinking it, makes it easier to start.</span></li>' +
+      '<li><b>Core habits</b><span class="sm muted">A small minimum keeps the chain alive on bad days, so one slip does not become a spiral.</span></li>' +
+      '<li><b>Never miss twice</b><span class="sm muted">A single missed day is forgiven. A streak breaks after two in a row.</span></li>' +
+      '<li><b>Identity votes</b><span class="sm muted">Each habit is evidence of who you are becoming.</span></li>' +
+      '<li><b>Weekly fresh start</b><span class="sm muted">A short review and one focus turns the calendar into a reset point.</span></li></ul></section>';
+    return head + cols(A, B);
+  }
+
+  /* ---------- render ---------- */
+  function curTab() { var t = (location.hash || "").replace("#", ""); return TABS.indexOf(t) > -1 ? t : "today"; }
+  function render() {
+    var t = curTab();
+    var html = t === "today" ? vToday() : t === "journey" ? vJourney() : t === "plan" ? vPlan() : vMe();
+    $("#view").innerHTML = html;
+    var xp = totalXp(), L = levelOf(xp), sk = streaks(), s = dayStats(todayKey);
+    $("#tabs").innerHTML = '<div class="brand">Lifemaxing Daily<span>Faith &middot; Looks &middot; Body &middot; Mind &middot; Money</span></div><div class="links">' +
+      TABS.map(function (k) { return '<button data-act="tab" data-tab="' + k + '"' + (k === t ? ' aria-current="page"' : "") + '>' + TAB_LABEL[k] + '</button>'; }).join("") + '</div>' +
+      '<div class="glance"><div><span>Level</span><b>' + L + '</b></div><div><span>XP</span><b>' + xp + '</b></div><div><span>Streak</span><b>' + sk.cur + 'd</b></div><div><span>Today</span><b>' + s.done + '/' + s.total + '</b></div></div>' +
+      '<div class="keys">1-4 &nbsp;switch tab<br>&larr; &rarr; &nbsp;change day<br>D &nbsp;&nbsp;&nbsp;&nbsp;mark next done</div>';
+    var ci = $("#ci");
+    if (ci) ci.addEventListener("toggle", function () { checkinOpen = ci.open; });
+  }
+  function toast(msg) {
+    var t = $("#toast"); t.textContent = msg; t.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("on"); }, 2800);
+  }
+  function buzz() { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {} }
+
+  /* ---------- actions ---------- */
+  function setVal(id, v) {
+    var day = viewDay, t = taskById(id); if (!t) return;
+    var beforeXp = totalXp(), beforeL = levelOf(beforeXp), beforeKept = dayStats(day).kept, beforePerfect = dayStats(day).perfect;
+    var d = state.done[day] ? Object.assign({}, state.done[day]) : {};
+    if (v) d[id] = v; else delete d[id];
+    if (Object.keys(d).length) state.done[day] = d; else delete state.done[day];
+    touch(); popId = v ? id : null;
+    var xp = totalXp(), L = levelOf(xp), s = dayStats(day);
+    render();
+    if (!v) return;
+    buzz();
+    if (L > beforeL) toast("Level " + L + ": " + TITLES[Math.min(L - 1, TITLES.length - 1)] + ".");
+    else if (s.perfect && !beforePerfect) toast("Perfect day. +" + (xp - beforeXp) + " XP");
+    else if (s.kept && !beforeKept) toast("Day kept. Streak " + streaks().cur + ". +" + (xp - beforeXp) + " XP");
+    else toast("+" + (xp - beforeXp) + " XP  ·  " + (state.ident[t.pillar] || pillarById(t.pillar).ident));
+  }
+  function goTab(t) { if (location.hash !== "#" + t) location.hash = t; else render(); window.scrollTo(0, 0); }
+  function draftFrom(t) { return t ? { name: t.name, pillar: t.pillar, slot: t.slot, core: t.core, cue: t.cue || "", tiny: t.tiny || "" } : { name: "", pillar: "faith", slot: "Anytime", core: false, cue: "", tiny: "" }; }
+  function cleanNote(day) {
+    var n = state.notes[day]; if (!n) return;
+    var t = (n.t || []).some(function (x) { return x && (x.x || x.d); });
+    if (!n.i && !n.w && !n.g && !n.l && !t) delete state.notes[day];
+  }
+  function cleanVit(day) {
+    var v = state.vitals[day]; if (!v) return;
+    if (!v.m && v.s == null && v.w == null) delete state.vitals[day];
+  }
+  function noteFor(day) { return state.notes[day] || (state.notes[day] = {}); }
+  function goDay(n) { viewDay = shift(viewDay, n); expanded = null; snoozed = []; render(); }
+
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-act]"); if (!el) return;
+    var a = el.dataset.act, id = el.dataset.id;
+    switch (a) {
+      case "tab": goTab(el.dataset.tab); break;
+      case "prev": goDay(-1); break;
+      case "next": if (viewDay < todayKey) goDay(1); break;
+      case "today": viewDay = todayKey; expanded = null; render(); break;
+      case "goday": viewDay = el.dataset.day; expanded = null; snoozed = []; goTab("today"); break;
+      case "seen": state.seen = true; touch(); render(); break;
+      case "done": setVal(id, 2); break;
+      case "tiny": setVal(id, 1); break;
+      case "toggle": setVal(id, val(viewDay, id) ? 0 : 2); break;
+      case "snooze": snoozed.push(id); render(); break;
+      case "info": expanded = expanded === id ? null : id; render(); break;
+      case "mode-full": delete state.low[viewDay]; touch(); render(); break;
+      case "mode-low": state.low[viewDay] = 1; touch(); render(); toast("Low energy day. Core habits only."); break;
+      case "full": delete state.low[viewDay]; touch(); render(); break;
+      case "rest":
+        if (isRest(viewDay)) delete state.rest[viewDay]; else state.rest[viewDay] = 1;
+        touch(); render(); if (isRest(viewDay)) toast("Rest day. Your streak is safe."); break;
+      case "prio": {
+        var i = +el.dataset.i, n = state.notes[viewDay] || (state.notes[viewDay] = {});
+        if (!Array.isArray(n.t)) n.t = [];
+        while (n.t.length < 3) n.t.push({ x: "", d: false });
+        n.t[i].d = !n.t[i].d; cleanNote(viewDay); touch(); render(); break;
+      }
+      case "mood": {
+        var m = +el.dataset.m, v = state.vitals[viewDay] || (state.vitals[viewDay] = {});
+        if (v.m === m) delete v.m; else v.m = m;
+        cleanVit(viewDay); touch(); render(); break;
+      }
+      case "new-task": editId = "new"; draft = draftFrom(null); render(); break;
+      case "edit-task": editId = id; draft = draftFrom(taskById(id)); render(); break;
+      case "cancel-edit": editId = null; draft = null; render(); break;
+      case "save-task": {
+        var nm = (draft.name || "").trim();
+        if (!nm) { toast("Give the habit a name."); var f = $("#d-name"); if (f) f.focus(); break; }
+        if (editId === "new") state.tasks.push({ id: "u" + Date.now().toString(36), pillar: draft.pillar, name: nm, slot: draft.slot, core: !!draft.core, cue: draft.cue.trim(), tiny: draft.tiny.trim() });
+        else { var t = taskById(editId); if (t) { t.pillar = draft.pillar; t.name = nm; t.slot = draft.slot; t.core = !!draft.core; t.cue = draft.cue.trim(); t.tiny = draft.tiny.trim(); } }
+        editId = null; draft = null; touch(); render(); toast("Saved."); break;
+      }
+      case "del-task":
+        state.tasks = state.tasks.filter(function (t) { return t.id !== id; });
+        editId = null; draft = null; touch(); render(); toast("Habit removed. History is kept."); break;
+      case "core": { var tk = taskById(id); if (tk) { tk.core = !tk.core; touch(); render(); } break; }
+      case "lib": libOpen = !libOpen; render(); break;
+      case "add-lib": {
+        var l = LIBRARY[+el.dataset.i]; if (!l) break;
+        state.tasks.push({ id: "u" + Date.now().toString(36), pillar: l[0], name: l[1], slot: l[2], core: false, cue: l[3], tiny: l[4] });
+        touch(); render(); toast("Added: " + l[1]); break;
+      }
+      case "exp-json": saveFile("lifemaxing-backup-" + todayKey + ".json", JSON.stringify(state, null, 2)); break;
+      case "exp-csv": exportCsv(); break;
+      case "import": $("#imp").click(); break;
+      case "reset": confirmReset = true; render(); break;
+      case "reset-no": confirmReset = false; render(); break;
+      case "reset-yes":
+        state = defaults(); confirmReset = false; viewDay = todayKey; touch(); render(); toast("Everything reset."); break;
+    }
+  });
+
+  document.addEventListener("input", function (e) {
+    var el = e.target; var f = el.dataset && el.dataset.f; if (!f) return;
+    var day = viewDay, v = el.value;
+    if (f === "intent") { noteFor(day).i = v; cleanNote(day); saveSoon(); }
+    else if (f === "win") { noteFor(day).w = v; cleanNote(day); saveSoon(); }
+    else if (f === "grat") { noteFor(day).g = v; cleanNote(day); saveSoon(); }
+    else if (f === "less") { noteFor(day).l = v; cleanNote(day); saveSoon(); }
+    else if (f === "prio") {
+      var n = noteFor(day), i = +el.dataset.i;
+      if (!Array.isArray(n.t)) n.t = [];
+      while (n.t.length < 3) n.t.push({ x: "", d: false });
+      n.t[i].x = v; cleanNote(day); saveSoon();
+    }
+    else if (f === "sleep" || f === "weight") {
+      var vt = state.vitals[day] || (state.vitals[day] = {}), key = f === "sleep" ? "s" : "w";
+      if (v === "" || isNaN(+v)) delete vt[key]; else vt[key] = +v;
+      cleanVit(day); saveSoon();
+    }
+    else if (f === "why") { state.why = v; saveSoon(); }
+    else if (f === "ident") { state.ident[el.dataset.p] = v; saveSoon(); }
+    else if (f === "wa" || f === "wb" || f === "wf") {
+      var wk = weekStart(todayKey), r = state.weekly[wk] || (state.weekly[wk] = {});
+      r[f.charAt(1)] = v;
+      if (!r.a && !r.b && !r.f) delete state.weekly[wk];
+      saveSoon();
+    }
+    else if (f.indexOf("d-") === 0 && draft) {
+      var key2 = f.slice(2);
+      draft[key2] = key2 === "core" ? el.checked : v;
+    }
+  });
+  document.addEventListener("change", function (e) {
+    var el = e.target; var f = el.dataset && el.dataset.f;
+    if (f && f.indexOf("d-") === 0 && draft) { var k = f.slice(2); draft[k] = k === "core" ? el.checked : el.value; }
+  });
+
+  // keyboard shortcuts (desktop)
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var tag = e.target && e.target.tagName;
+    if (/INPUT|TEXTAREA|SELECT/.test(tag) || (e.target && e.target.isContentEditable)) return;
+    var i = "1234".indexOf(e.key);
+    if (i > -1 && e.key.length === 1) { goTab(TABS[i]); return; }
+    if (curTab() !== "today") return;
+    if (e.key === "ArrowLeft") { goDay(-1); }
+    else if (e.key === "ArrowRight") { if (viewDay < todayKey) goDay(1); }
+    else if (e.key === "d" || e.key === "D") { var b = document.querySelector('.next [data-act="done"]'); if (b) setVal(b.dataset.id, 2); }
+  });
+
+  window.addEventListener("hashchange", function () { render(); window.scrollTo(0, 0); });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    var k = dkey(new Date());
+    if (k !== todayKey) { var was = viewDay === todayKey; todayKey = k; if (was) viewDay = k; memo = {}; }
+    if (!(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render();
+  });
+
+  /* ---------- export / import ---------- */
+  function blobSave(name, data) {
+    var type = /\.csv$/.test(name) ? "text/csv" : "application/json";
+    var u = URL.createObjectURL(new Blob([data], { type: type + ";charset=utf-8" }));
+    var a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 1500); toast("Saved " + name);
+  }
+  function saveFile(name, data) {
+    if (downloads) {
+      downloads.save({ filename: name, data: data }).then(function () { toast("Saved " + name); },
+        function (err) { if (err && err.code !== "declined") toast("Could not save that file here."); });
+    } else if (!inArtifact) blobSave(name, data);
+  }
+  function exportCsv() {
+    var cols2 = ["date", "kept", "done", "total"].concat(PILLARS.map(function (p) { return p.id + "_done"; }), ["mood", "sleep_h", "weight_kg", "intention", "win", "grateful", "lesson"]);
+    var keys = {};
+    Object.keys(state.done).concat(Object.keys(state.notes), Object.keys(state.vitals)).forEach(function (k) { keys[k] = 1; });
+    function q(s) { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+    var lines = [cols2.join(",")];
+    Object.keys(keys).sort().forEach(function (k) {
+      var s = dayStats(k), v = state.vitals[k] || {}, n = state.notes[k] || {};
+      var row = [k, s.kept ? 1 : 0, s.done, s.total].concat(PILLARS.map(function (p) {
+        return state.tasks.filter(function (t) { return t.pillar === p.id && val(k, t.id); }).length;
+      }), [v.m, v.s, v.w, n.i, n.w, n.g, n.l]);
+      lines.push(row.map(q).join(","));
+    });
+    saveFile("lifemaxing-history.csv", lines.join("\n"));
+  }
+  $("#imp").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var d = JSON.parse(String(r.result));
+        if (!d || typeof d !== "object" || !Array.isArray(d.tasks)) throw new Error("bad");
+        state = normalize(d); touch(); render(); toast("Backup imported.");
+      } catch (err) { toast("That file is not a Lifemaxing backup."); }
+      e.target.value = "";
+    };
+    r.readAsText(f);
+  });
+  if (inArtifact) {
+    window.claude.use("downloads").then(function (d) { if (d) { downloads = d; if (curTab() === "me") render(); } }).catch(function () {});
+  }
+
+  render();
+
+  /* ---------- account storage (only when hosted as a Claude artifact) ---------- */
+  (function connect() {
+    if (!inArtifact) return;
+    Promise.all([window.claude.use("db"), window.claude.use("user")]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (!db || !user) return null;
+      return user.id().then(function (uid) {
+        if (!uid) return;
+        ref = db.collection("data/users/" + uid).doc("tracker");
+        ref.onSnapshot(function (snap) {
+          if (snap.metadata.hasPendingWrites) return;
+          if (snap.exists) {
+            var remote = normalize(snap.data());
+            if (remote.updatedAt > state.updatedAt) {
+              state = remote; ver++; memo = {}; persistLocal(); setNote("Saved to your account.");
+              if (!(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render();
+            } else if (remote.updatedAt < state.updatedAt && !snap.metadata.fromCache) {
+              schedule();
+            } else if (!inflight) {
+              setNote("Saved to your account.");
+            }
+          } else if (!snap.metadata.fromCache) {
+            if (!state.updatedAt) state.updatedAt = Date.now();
+            persistLocal(); schedule();
+          }
+        }, function () { setNote("Saved on this device only."); });
+      });
+    }).catch(function () {});
+  })();
+})();
+</script>
+</body>
+</html>
